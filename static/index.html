@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAM Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <div id="auth-view">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1><i class="fa-solid fa-shield-halved" style="color: #3b82f6;"></i> IAM</h1>
+                <p>Enterprise Identity & Access Management</p>
+            </div>
+
+            <div id="login-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="log-username" placeholder="admin or user">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="log-password" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label>MFA Code</label>
+                    <input type="text" id="log-totp" placeholder="6-digit Authenticator Code">
+                </div>
+                <button class="btn-primary" onclick="login()">Login</button>
+                <div class="auth-toggle">
+                    New user? <a onclick="toggleAuthMode('register')">Create account</a>
+                </div>
+            </div>
+
+            <div id="register-form" style="display: none;">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="reg-username" placeholder="Choose a username">
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" placeholder="Create a secure password"
+                        oninput="checkPasswordStrength()">
+
+                    <div id="password-rules" class="password-rules-container">
+                        <ul class="rule-list">
+                            <li id="rule-length" class="invalid"><i class="fa-solid fa-xmark"></i> At least 8 characters
+                            </li>
+                            <li id="rule-upper" class="invalid"><i class="fa-solid fa-xmark"></i> One uppercase letter
+                            </li>
+                            <li id="rule-lower" class="invalid"><i class="fa-solid fa-xmark"></i> One lowercase letter
+                            </li>
+                            <li id="rule-number" class="invalid"><i class="fa-solid fa-xmark"></i> One number</li>
+                            <li id="rule-special" class="invalid"><i class="fa-solid fa-xmark"></i> One special
+                                character</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="reg-confirm-password" placeholder="Re-enter password">
+                </div>
+                <div class="form-group">
+                    <label>Identity Policy Role</label>
+                    <select id="reg-role">
+                        <option value="User">Standard User (Restricted)</option>
+                        <option value="Admin">Administrator (Full Access)</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="register()">Create Account</button>
+                <div class="auth-toggle">
+                    Already have an account? <a onclick="toggleAuthMode('login')">Return to login</a>
+                </div>
+            </div>
+
+            <div id="auth-msg" class="msg"></div>
+        </div>
+    </div>
+
+    <div id="mfa-onboarding-view">
+        <div class="mfa-fullscreen-content">
+            <i class="fa-solid fa-shield-halved" style="font-size: 5rem; color: #3b82f6; margin-bottom: 1rem;"></i>
+            <h1>Secure Your Identity</h1>
+            <p>Multi-Factor Authentication is required to access the IAM Enterprise Dashboard.</p>
+
+            <div id="mfa-step-1">
+                <p>To protect your account against unauthorized access, you must link an authenticator app (such as
+                    Google Authenticator) to your profile right now.</p>
+                <button class="btn-primary" style="max-width: 350px; margin: 0 auto; font-size: 1.1rem;"
+                    onclick="startMfaOnboarding()">Generate MFA Secret Key</button>
+            </div>
+
+            <div id="mfa-step-2" style="display: none;">
+                <p>1. Open your Authenticator app.<br>2. Add a new account manually using this exact text key:</p>
+                <div id="mfa-onboarding-secret" class="mfa-secret-box"></div>
+                <button class="btn-primary btn-success" style="max-width: 400px; margin: 0 auto; font-size: 1.1rem;"
+                    onclick="finishMfaOnboarding()">I have saved it. Take me to the Dashboard.</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-view">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-shield-halved"></i> IAM
+            </div>
+            <div class="nav-menu">
+                <div class="nav-item active" onclick="switchTab('overview')" id="nav-overview"><i
+                        class="fa-solid fa-chart-pie"></i> Home</div>
+                <div class="nav-item" onclick="switchTab('directory')" id="nav-directory"><i
+                        class="fa-solid fa-users"></i> Users</div>
+            </div>
+            <div class="profile-card">
+                <div class="avatar" id="avatar-letter">U</div>
+                <div class="profile-info">
+                    <div class="profile-name" id="display-name">Loading...</div>
+                    <div class="profile-role" id="display-role">Role</div>
+                </div>
+                <button class="btn-logout" onclick="logout()" title="Logout"><i
+                        class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="tab-overview" class="tab-view active">
+                <div class="header" style="margin-bottom: 2rem;">
+                    <div>
+                        <h2 id="welcome-msg">Identity Dashboard</h2>
+                        <p>Manage access policies and monitor your personal security events.</p>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-blue"><i class="fa-solid fa-fingerprint"></i></div>
+                        <div class="stat-info">
+                            <h3>Active</h3>
+                            <p>Session State</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-green"><i class="fa-solid fa-shield-check"></i></div>
+                        <div class="stat-info">
+                            <h3 id="kpi-mfa">Secured</h3>
+                            <p>MFA Status</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-purple"><i class="fa-solid fa-user-tag"></i></div>
+                        <div class="stat-info">
+                            <h3 id="kpi-role">User</h3>
+                            <p>Policy Level</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-grid">
+                    <div class="card">
+                        <div class="card-header"><span><i class="fa-regular fa-address-card"></i> Identity
+                                Profile</span></div>
+                        <div class="card-body">
+                            <div class="profile-details">
+                                <div class="profile-row">
+                                    <span class="profile-label">Registered User</span>
+                                    <span class="profile-value" id="det-username">Loading...</span>
+                                </div>
+                                <div class="profile-row">
+                                    <span class="profile-label">Clearance Role</span>
+                                    <span class="profile-value" id="det-role">Loading...</span>
+                                </div>
+                                <div class="profile-row">
+                                    <span class="profile-label">MFA Configuration</span>
+                                    <span class="profile-value"><span class="badge mfa-on">Verified</span></span>
+                                </div>
+                                <div class="profile-row">
+                                    <span class="profile-label">Session Lifetime</span>
+                                    <span class="profile-value">30 Minutes (JWT)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="rbac-tools-card">
+                        <div class="card-header"><span><i class="fa-solid fa-network-wired"></i> API Access Control
+                                (RBAC)</span></div>
+                        <div class="card-body">
+                            <div class="action-buttons">
+                                <button class="btn-resource btn-user" onclick="testAccess('/api/user-data')">
+                                    <i class="fa-solid fa-user"></i> Request Standard Endpoint
+                                </button>
+                                <button class="btn-resource btn-admin" onclick="testAccess('/api/admin-data')">
+                                    <i class="fa-solid fa-user-shield"></i> Request Protected Endpoint
+                                </button>
+                            </div>
+                            <div class="api-responses" id="api-responses">
+                                <div class="response-card" style="border-left-color: #3b82f6; background: #eff6ff;">
+                                    <div class="response-header"><span style="color: #1d4ed8;"><i
+                                                class="fa-solid fa-circle-info"></i> System Ready</span></div>
+                                    <div class="response-body">Click an endpoint above to test your assigned access
+                                        policies.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width" id="audit-tools-card">
+                        <div class="card-header">
+                            <span><i class="fa-solid fa-list-check"></i> Security Audit Trail</span>
+                            <button class="btn-secondary" onclick="fetchAuditLogs()"
+                                style="padding: 0.35rem 0.75rem; font-size: 0.8rem;"><i
+                                    class="fa-solid fa-rotate-right"></i> Refresh</button>
+                        </div>
+                        <div class="card-body" style="padding: 0; overflow-y: auto; max-height: 400px;">
+                            <table>
+                                <tbody id="audit-table-body">
+                                    <tr>
+                                        <td style="padding: 2rem; text-align: center;">Loading secure logs...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-directory" class="tab-view">
+                <div class="header" style="margin-bottom: 2rem;">
+                    <div>
+                        <h2>User Directory</h2>
+                        <p>Administrator panel for identity lifecycle management.</p>
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <span><i class="fa-solid fa-users-gear"></i> Registered Identities</span>
+                        <button class="btn-secondary" onclick="loadDirectory()"
+                            style="padding: 0.35rem 0.75rem; font-size: 0.8rem;"><i
+                                class="fa-solid fa-rotate-right"></i> Refresh</button>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Username</th>
+                                    <th>MFA Status</th>
+                                    <th>Lockout Status</th>
+                                    <th>Assigned Policy Role</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="directory-table-body">
+                                <tr>
+                                    <td colspan="6" style="padding: 2rem; text-align: center;">Requires Administrator
+                                        Access...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let jwtToken = "";
+
+        function toggleAuthMode(mode) {
+            document.getElementById('auth-msg').innerText = "";
+            document.getElementById('login-form').style.display = mode === 'register' ? 'none' : 'block';
+            document.getElementById('register-form').style.display = mode === 'register' ? 'block' : 'none';
+        }
+
+        function showDashboard(username) {
+            document.getElementById('auth-view').style.display = 'none';
+            document.getElementById('mfa-onboarding-view').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'grid';
+
+            document.getElementById('display-name').innerText = username;
+            document.getElementById('det-username').innerText = username;
+            document.getElementById('welcome-msg').innerText = `Welcome, ${username}`;
+            document.getElementById('avatar-letter').innerText = username.charAt(0).toUpperCase();
+
+            testAccess('/api/user-data', true);
+            fetchAuditLogs();
+        }
+
+        function logout() {
+            jwtToken = "";
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('mfa-onboarding-view').style.display = 'none';
+            document.getElementById('auth-view').style.display = 'flex';
+
+            document.getElementById('log-password').value = "";
+            document.getElementById('log-totp').value = "";
+            toggleAuthMode('login');
+        }
+
+        function setAuthMessage(msg, isError) {
+            const el = document.getElementById('auth-msg');
+            el.innerText = msg;
+            el.className = isError ? "msg error" : "msg success";
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tab-overview').classList.remove('active');
+            document.getElementById('tab-directory').classList.remove('active');
+            document.getElementById('nav-overview').classList.remove('active');
+            document.getElementById('nav-directory').classList.remove('active');
+
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('nav-' + tab).classList.add('active');
+
+            if (tab === 'directory') loadDirectory();
+        }
+
+        function addResponseCard(endpoint, htmlBody, status, time) {
+            const container = document.getElementById('api-responses');
+            const card = document.createElement('div');
+            card.className = `response-card ${status}`;
+
+            const icon = status === 'success' ? '<i class="fa-solid fa-check-circle" style="color:#10b981;"></i> 200 OK' : '<i class="fa-solid fa-circle-xmark" style="color:#ef4444;"></i> 403 Forbidden';
+
+            card.innerHTML = `
+                <div class="response-header">
+                    <span>${icon} <span style="color: #64748b; font-weight: 600; font-size: 0.8rem; margin-left: 0.5rem;">${endpoint}</span></span>
+                    <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">${time}</span>
+                </div>
+                <div class="response-body">${htmlBody}</div>
+            `;
+            container.prepend(card);
+        }
+
+        function checkPasswordStrength() {
+            const val = document.getElementById('reg-password').value;
+            const rulesContainer = document.getElementById('password-rules');
+
+            if (val.length > 0) {
+                rulesContainer.classList.add('show');
+            } else {
+                rulesContainer.classList.remove('show');
+            }
+
+            const rules = [
+                { id: 'rule-length', regex: /.{8,}/ },
+                { id: 'rule-upper', regex: /[A-Z]/ },
+                { id: 'rule-lower', regex: /[a-z]/ },
+                { id: 'rule-number', regex: /[0-9]/ },
+                { id: 'rule-special', regex: /[!@#$%^&*(),.?":{}|<>]/ }
+            ];
+
+            rules.forEach(rule => {
+                const el = document.getElementById(rule.id);
+                const icon = el.querySelector('i');
+                if (rule.regex.test(val)) {
+                    el.classList.remove('invalid');
+                    el.classList.add('valid');
+                    icon.className = 'fa-solid fa-check';
+                } else {
+                    el.classList.remove('valid');
+                    el.classList.add('invalid');
+                    icon.className = 'fa-solid fa-xmark';
+                }
+            });
+        }
+
+        async function register() {
+            const u = document.getElementById('reg-username').value;
+            const p = document.getElementById('reg-password').value;
+            const cp = document.getElementById('reg-confirm-password').value;
+            const r = document.getElementById('reg-role').value;
+
+            if (p !== cp) {
+                setAuthMessage("Passwords do not match.", true);
+                return;
+            }
+
+            const res = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p, role_name: r })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                setAuthMessage("Account created. Authenticating...", false);
+                document.getElementById('log-username').value = u;
+                document.getElementById('log-password').value = p;
+
+                document.getElementById('reg-password').value = "";
+                document.getElementById('reg-confirm-password').value = "";
+                document.getElementById('password-rules').classList.remove('show');
+
+                setTimeout(() => login(), 1000);
+            } else {
+                setAuthMessage(data.detail, true);
+            }
+        }
+
+        async function login() {
+            const formData = new URLSearchParams();
+            formData.append('username', document.getElementById('log-username').value);
+            formData.append('password', document.getElementById('log-password').value);
+
+            const totp = document.getElementById('log-totp').value;
+            if (totp) formData.append('totp_code', totp);
+
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                jwtToken = data.access_token;
+
+                const userRes = await fetch('/api/user-data', { headers: { 'Authorization': 'Bearer ' + jwtToken } });
+                const userData = await userRes.json();
+
+                if (userData.mfa_enabled === false) {
+                    document.getElementById('auth-view').style.display = 'none';
+                    document.getElementById('dashboard-view').style.display = 'none';
+                    document.getElementById('mfa-onboarding-view').style.display = 'flex';
+                    document.getElementById('mfa-step-1').style.display = 'block';
+                    document.getElementById('mfa-step-2').style.display = 'none';
+                } else {
+                    if (userData.role) {
+                        document.getElementById('display-role').innerText = userData.role;
+                        document.getElementById('det-role').innerText = userData.role;
+                        document.getElementById('kpi-role').innerText = userData.role;
+                    }
+                    showDashboard(document.getElementById('log-username').value);
+                }
+            } else setAuthMessage(data.detail, true);
+        }
+
+        async function startMfaOnboarding() {
+            const res = await fetch('/api/setup-mfa', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + jwtToken }
+            });
+            const data = await res.json();
+
+            document.getElementById('mfa-step-1').style.display = 'none';
+            document.getElementById('mfa-step-2').style.display = 'block';
+
+            const formattedSecret = data.secret.match(/.{1,4}/g).join(' ');
+            document.getElementById('mfa-onboarding-secret').innerText = formattedSecret;
+        }
+
+        function finishMfaOnboarding() {
+            const username = document.getElementById('log-username').value;
+            showDashboard(username);
+        }
+
+        async function testAccess(endpoint, silent = false) {
+            const res = await fetch(endpoint, { headers: { 'Authorization': 'Bearer ' + jwtToken } });
+
+            if (res.status === 401 || res.status === 403) {
+                const data = await res.json();
+                if (data.detail && data.detail.includes("expired")) {
+                    alert("Your session has expired. Please log in again.");
+                    logout();
+                    return;
+                }
+            }
+
+            const data = await res.json();
+            const time = new Date().toLocaleTimeString();
+
+            if (res.ok) {
+                if (!silent) {
+                    const mfaStat = data.mfa_enabled !== undefined ? (data.mfa_enabled ? 'ON' : 'OFF') : 'N/A';
+                    addResponseCard(endpoint, `<strong>Message:</strong> ${data.message}<br><strong>User:</strong> ${data.username} | <strong>Role:</strong> ${data.role} | <strong>MFA:</strong> ${mfaStat}`, 'success', time);
+                }
+                if (data.role) {
+                    document.getElementById('display-role').innerText = data.role;
+                    document.getElementById('det-role').innerText = data.role;
+                    document.getElementById('kpi-role').innerText = data.role;
+                }
+            } else {
+                if (!silent) {
+                    addResponseCard(endpoint, `<strong>Blocked:</strong> ${data.detail}`, 'denied', time);
+                }
+            }
+            if (!silent) fetchAuditLogs();
+        }
+
+        async function fetchAuditLogs() {
+            if (!jwtToken) return;
+            const res = await fetch('/api/audit-logs', { headers: { 'Authorization': 'Bearer ' + jwtToken } });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            if (res.ok) {
+                const logs = await res.json();
+                const tbody = document.getElementById('audit-table-body');
+                tbody.innerHTML = logs.map(l => `
+                    <tr>
+                        <td style="${l.action.includes('Failed') || l.action.includes('Unauthorized') || l.action.includes('locked') || l.action.includes('deleted') ? 'color: #ef4444;' : 'color: #10b981;'} font-weight: 600;">${l.action}</td>
+                        <td style="font-size: 0.85rem; font-family: monospace; text-align: right; color: #64748b;">${l.timestamp}</td>
+                    </tr>
+                `).join("");
+            }
+        }
+
+        async function loadDirectory() {
+            const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + jwtToken } });
+            const tbody = document.getElementById('directory-table-body');
+
+            if (!res.ok) {
+                tbody.innerHTML = `<tr><td colspan="6" style="color: #ef4444; font-weight: 600; padding: 2rem; text-align: center;">403 Forbidden: Insufficient Admin Privileges</td></tr>`;
+                return;
+            }
+
+            const users = await res.json();
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td><span class="badge">#${u.id}</span></td>
+                    <td style="font-weight: 700; color: #0f172a;">${u.username}</td>
+                    <td><span class="badge ${u.mfa_enabled ? 'mfa-on' : 'mfa-off'}">${u.mfa_enabled ? 'Enabled' : 'Disabled'}</span></td>
+                    <td>${u.is_locked ? `<span class="badge" style="background:#fee2e2; color:#dc2626;">LOCKED (${u.lockout_remaining}m left)</span>` : '<span style="color: #64748b; font-size: 0.85rem;">Active</span>'}</td>
+                    <td>
+                        <select id="role-select-${u.id}" style="padding: 0.35rem 0.5rem; width: auto; font-weight: 600; color: #475569;">
+                            <option value="User" ${u.role === 'User' ? 'selected' : ''}>User</option>
+                            <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </td>
+                    <td style="display: flex; gap: 0.5rem;">
+                        <button class="btn-secondary" onclick="updateRole(${u.id})">Update Policy</button>
+                        ${u.mfa_enabled ? `<button class="btn-secondary" style="color: #ea580c; border-color: #fdba74; background: #fff7ed;" onclick="resetMFA(${u.id})">Reset MFA</button>` : ''}
+                        ${u.is_locked ? `<button class="btn-secondary" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff;" onclick="unlockUser(${u.id})"><i class="fa-solid fa-unlock"></i> Unlock</button>` : ''}
+                        <button class="btn-danger" style="padding: 0.5rem 0.75rem;" onclick="deleteUser(${u.id}, '${u.username}')" title="Permanently Delete User"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        async function updateRole(userId) {
+            const newRole = document.getElementById(`role-select-${userId}`).value;
+            const res = await fetch(`/api/admin/users/${userId}/role`, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + jwtToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_role: newRole })
+            });
+            if (res.ok) {
+                alert("Role updated successfully.");
+                loadDirectory();
+                fetchAuditLogs();
+            } else {
+                const data = await res.json();
+                alert("Error: " + data.detail);
+            }
+        }
+
+        async function resetMFA(userId) {
+            if (!confirm("Are you sure you want to reset this user's MFA? They will be forced to reconfigure it on their next login.")) return;
+            const res = await fetch(`/api/admin/users/${userId}/reset-mfa`, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + jwtToken }
+            });
+            if (res.ok) {
+                alert("MFA has been reset successfully.");
+                loadDirectory();
+                fetchAuditLogs();
+            } else {
+                const data = await res.json();
+                alert("Error: " + data.detail);
+            }
+        }
+
+        async function unlockUser(userId) {
+            const res = await fetch(`/api/admin/users/${userId}/unlock`, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + jwtToken }
+            });
+            if (res.ok) {
+                alert("Account unlocked successfully.");
+                loadDirectory();
+                fetchAuditLogs();
+            } else {
+                const data = await res.json();
+                alert("Error: " + data.detail);
+            }
+        }
+
+        async function deleteUser(userId, username) {
+            if (!confirm(`CRITICAL WARNING: Are you sure you want to permanently delete the identity '${username}'? This action cannot be undone.`)) return;
+
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + jwtToken }
+            });
+
+            if (res.ok) {
+                alert(`Identity '${username}' removed successfully.`);
+                loadDirectory();
+                fetchAuditLogs();
+            } else {
+                const data = await res.json();
+                alert("Error: " + data.detail);
+            }
+        }
+    </script>
+</body>
+
+</html>
